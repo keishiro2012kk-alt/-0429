@@ -36,28 +36,35 @@ export default function ActiveQuiz() {
 
     let words = [...(allWords || [])];
 
-    // PDFソースフィルター
-    if (state?.selectedSource && state.selectedSource !== "all") {
-      words = words.filter(w => (w.source || "手動追加") === state.selectedSource);
-    }
+    // 単語選択モード
+    if (state?.mode === "select" && state?.selectedWordIds?.length > 0) {
+      const idSet = new Set(state.selectedWordIds as string[]);
+      words = words.filter(w => idSet.has(w.id as string));
+    } else {
+      // PDFソースフィルター
+      if (state?.selectedSource && state.selectedSource !== "all") {
+        words = words.filter(w => (w.source || "手動追加") === state.selectedSource);
+      }
 
-    // モードフィルター
-    if (state?.mode === "favorites") {
-      words = words.filter(w => w.isFavorite);
-    } else if (state?.mode === "weakness") {
-      words = words.filter(w => w.incorrectCount > 0).sort((a, b) => b.incorrectCount - a.incorrectCount);
+      // モードフィルター
+      if (state?.mode === "favorites") {
+        words = words.filter(w => w.isFavorite);
+      } else if (state?.mode === "weakness") {
+        words = words.filter(w => w.incorrectCount > 0).sort((a, b) => b.incorrectCount - a.incorrectCount);
+      }
     }
 
     if (words.length === 0) {
       const msg = state?.mode === "favorites" ? "お気に入りに登録された単語がありません。"
         : state?.mode === "weakness" ? "間違えたことのある単語がありません。素晴らしい！"
+        : state?.mode === "select" ? "選択された単語が見つかりません。"
         : "単語データがありません。先にPDFをアップロードしてください。";
       setError(msg);
       setLoading(false);
       return;
     }
 
-    // 問題生成（単語帳のみ）
+    // 問題生成
     const generated: Question[] = words.map(w => {
       let blanked = w.example.replace(new RegExp(`\\b${w.word}\\b`, "gi"), "(      )");
       if (blanked === w.example) {
@@ -75,7 +82,10 @@ export default function ActiveQuiz() {
     });
 
     generated.sort(() => Math.random() - 0.5);
-    const count = state?.questionCount || 10;
+    // "all" の場合は全問出題、selectモードも全選択単語を出題
+    const count = (state?.questionCount === "all" || state?.mode === "select")
+      ? generated.length
+      : (state?.questionCount || 10);
     setQuestions(generated.slice(0, Math.min(count, generated.length)));
     setLoading(false);
   }, [allWords, wordsLoading, state]);
