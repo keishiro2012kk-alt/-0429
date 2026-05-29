@@ -7,7 +7,7 @@ export function useWords() {
 
   const loadWords = useCallback(async () => {
     try {
-      const all = await db.words.orderBy("addedAt").reverse().toArray();
+      const all = await db.words.orderBy("addedAt").toArray();
       setWords(all.map(w => ({ ...w, id: String(w.id) })));
     } catch (e) {
       console.error("Failed to load words:", e);
@@ -41,8 +41,12 @@ export function useWords() {
   };
 
   const deleteBySource = async (source: string) => {
-    const ids = await db.words.where("source").equals(source).primaryKeys();
-    await db.words.bulkDelete(ids as number[]);
+    const all = await db.words.toArray();
+    const ids = all
+      .filter(w => (w.source || "手動追加") === source)
+      .map(w => w.id!)
+      .filter(Boolean);
+    await db.words.bulkDelete(ids);
     await loadWords();
   };
 

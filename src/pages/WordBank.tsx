@@ -157,6 +157,24 @@ export default function WordBank() {
     }
   };
 
+  if (uploading) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060B19]">
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative w-20 h-20">
+            <div className="absolute inset-0 rounded-full border-4 border-cyan-500/20" />
+            <div className="absolute inset-0 rounded-full border-4 border-t-cyan-400 animate-spin" />
+            <div className="absolute inset-2 rounded-full border-4 border-t-blue-400 animate-spin" style={{animationDirection: "reverse", animationDuration: "0.8s"}} />
+          </div>
+          <div className="text-center">
+            <p className="text-cyan-400 font-bold text-lg tracking-widest animate-pulse">PDFを解析中...</p>
+            <p className="text-slate-500 text-sm mt-2">AIが単語を抽出しています。しばらくお待ちください。</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center gap-4">

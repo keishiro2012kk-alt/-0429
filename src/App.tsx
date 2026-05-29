@@ -11,8 +11,6 @@ import Flashcards from "./pages/Flashcards";
 import QuizConfig from "./pages/QuizConfig";
 import ActiveQuiz from "./pages/ActiveQuiz";
 import Stats from "./pages/Stats";
-import AIChecker from "./pages/AIChecker";
-import AITutor from "./pages/AITutor";
 import ReadingPractice from "./pages/ReadingPractice";
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -55,8 +53,8 @@ export default function App() {
           <Route path="/words" element={<PageTransition><WordBank /></PageTransition>} />
           <Route path="/reading" element={<PageTransition><ReadingPractice /></PageTransition>} />
           <Route path="/cards" element={<PageTransition><Flashcards /></PageTransition>} />
-          <Route path="/checker" element={<PageTransition><AIChecker /></PageTransition>} />
-          <Route path="/tutor" element={<PageTransition><AITutor /></PageTransition>} />
+          <Route path="/checker" element={<PageTransition><ReadingPractice /></PageTransition>} />
+          <Route path="/tutor" element={<PageTransition><ReadingPractice /></PageTransition>} />
           <Route path="/quiz" element={<PageTransition><QuizConfig /></PageTransition>} />
           <Route path="/quiz/active" element={<PageTransition><ActiveQuiz /></PageTransition>} />
           <Route path="/stats" element={<PageTransition><Stats /></PageTransition>} />

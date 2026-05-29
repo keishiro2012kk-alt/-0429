@@ -87,15 +87,6 @@ export default function ReadingPractice() {
     });
   }
 
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-         <h2 className="text-2xl font-bold">読解練習</h2>
-         <p className="text-slate-400">ログインすると、あなたの単語から長文を作成できます。</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <header className="flex justify-between items-end">

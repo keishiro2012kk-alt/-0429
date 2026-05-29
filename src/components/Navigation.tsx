@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, BookOpen, BrainCircuit, BarChart2, Layers, CheckSquare, MessageSquare, BookText } from "lucide-react";
+import { Home, BookOpen, BrainCircuit, BarChart2, Layers, BookText } from "lucide-react";
 import { cn } from "../lib/utils";
 import { motion } from "motion/react";
 
@@ -8,8 +8,6 @@ const links = [
   { to: "/words", label: "一覧", icon: BookText },
   { to: "/cards", label: "単語帳", icon: Layers },
   { to: "/reading", label: "読解", icon: BookOpen },
-  { to: "/checker", label: "添削", icon: CheckSquare },
-  { to: "/tutor", label: "会話", icon: MessageSquare },
   { to: "/quiz", label: "問題", icon: BrainCircuit },
   { to: "/stats", label: "統計", icon: BarChart2 },
 ];
@@ -17,12 +15,13 @@ const links = [
 export function Navigation() {
   return (
     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-4xl z-50 pointer-events-none flex justify-center">
-      <div className="glass-panel py-2 px-2 flex items-center rounded-[2rem] bg-[#0A0F1F]/60 shadow-[0_20px_40px_-20px_rgba(34,211,238,0.15)] backdrop-blur-2xl border border-white/10 pointer-events-auto max-w-full overflow-x-auto no-scrollbar">
-        <div className="flex items-center min-w-max gap-1 sm:gap-2 px-2">
+      <div className="glass-panel py-2 px-2 flex items-center rounded-[2rem] bg-[#0A0F1F]/60 shadow-[0_20px_40px_-20px_rgba(34,211,238,0.15)] backdrop-blur-2xl border border-white/10 pointer-events-auto">
+        <div className="flex items-center gap-1 sm:gap-2 px-2">
           {links.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
+              end={link.to === "/"}
               className={({ isActive }) =>
                 cn(
                   "relative flex items-center px-4 py-3 sm:py-3.5 rounded-2xl transition-all duration-300 group",
