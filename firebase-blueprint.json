@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "Word": {
+      "title": "Word",
+      "description": "Vocabulary word and metadata",
+      "type": "object",
+      "properties": {
+        "word": { "type": "string" },
+        "pos": { "type": "string" },
+        "translation": { "type": "string" },
+        "example": { "type": "string" },
+        "exampleTranslation": { "type": "string" },
+        "level": { "type": "string", "enum": ["easy", "medium", "hard"] },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "lastReviewedAt": { "type": "string", "format": "date-time" },
+        "correctCount": { "type": "number" },
+        "incorrectCount": { "type": "number" },
+        "isFavorite": { "type": "boolean" },
+        "userId": { "type": "string" }
+      },
+      "required": ["word", "pos", "translation", "example", "exampleTranslation", "level", "addedAt", "correctCount", "incorrectCount", "isFavorite", "userId"]
+    },
+    "StudySession": {
+      "title": "StudySession",
+      "description": "History of study sessions",
+      "type": "object",
+      "properties": {
+        "date": { "type": "string", "format": "date-time" },
+        "durationMinutes": { "type": "number" },
+        "correctAnswers": { "type": "number" },
+        "totalQuestions": { "type": "number" },
+        "topic": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["date", "durationMinutes", "correctAnswers", "totalQuestions", "topic", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile details"
+    },
+    "/users/{userId}/words/{wordId}": {
+      "schema": { "$ref": "#/entities/Word" },
+      "description": "User's vocabulary list"
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/StudySession" },
+      "description": "User's study history"
+    }
+  }
+}

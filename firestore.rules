@@ -1,0 +1,88 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Catch-all default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Functions
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Validation definitions
+    function isValidUser(data, userId) {
+      return data.keys().hasAll(['userId', 'createdAt'])
+        && data.keys().size() == 2
+        && data.userId == request.auth.uid
+        && data.userId == userId
+        && data.createdAt == request.time;
+    }
+
+    function isValidWord(data, userId) {
+      return data.keys().hasAll(['word', 'pos', 'translation', 'example', 'exampleTranslation', 'level', 'addedAt', 'correctCount', 'incorrectCount', 'isFavorite', 'userId'])
+        && (data.keys().size() == 11 || (data.keys().hasAll(['lastReviewedAt']) && data.keys().size() == 12))
+        && data.userId == request.auth.uid
+        && data.userId == userId
+        && data.word is string && data.word.size() > 0 && data.word.size() <= 100
+        && data.pos is string && data.pos.size() > 0 && data.pos.size() <= 50
+        && data.translation is string && data.translation.size() > 0 && data.translation.size() <= 300
+        && data.example is string && data.example.size() <= 1000
+        && data.exampleTranslation is string && data.exampleTranslation.size() <= 1000
+        && data.level in ['easy', 'medium', 'hard']
+        && data.correctCount is number && data.incorrectCount is number
+        && data.isFavorite is bool;
+    }
+
+    function isValidSession(data, userId) {
+      return data.keys().hasAll(['date', 'durationMinutes', 'correctAnswers', 'totalQuestions', 'topic', 'userId'])
+        && data.keys().size() == 6
+        && data.userId == request.auth.uid
+        && data.userId == userId
+        && data.durationMinutes is number
+        && data.correctAnswers is number
+        && data.totalQuestions is number
+        && data.topic is string && data.topic.size() <= 100
+        && data.date == request.time; // Or whatever timestamp is used
+    }
+
+    // Rules for Users
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming(), userId);
+      allow update: if isOwner(userId) && existing().userId == incoming().userId && incoming().diff(existing()).affectedKeys().size() == 0; // Prevent updates for now
+      allow delete: if false;
+
+      // Rules for Words
+      match /words/{wordId} {
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow get: if isOwner(userId) && isValidId(wordId);
+        allow create: if isOwner(userId) && isValidId(wordId) 
+                     && exists(/databases/$(database)/documents/users/$(userId))
+                     && isValidWord(incoming(), userId)
+                     && incoming().addedAt == request.time;
+        allow update: if isOwner(userId) && isValidId(wordId)
+                      && incoming().userId == existing().userId
+                      && incoming().diff(existing()).affectedKeys().hasOnly(['level', 'correctCount', 'incorrectCount', 'isFavorite', 'lastReviewedAt'])
+                      && isValidWord(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(wordId);
+      }
+
+      // Rules for Sessions
+      match /sessions/{sessionId} {
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+        allow get: if isOwner(userId) && isValidId(sessionId);
+        allow create: if isOwner(userId) && isValidId(sessionId)
+                     && exists(/databases/$(database)/documents/users/$(userId))
+                     && isValidSession(incoming(), userId)
+                     && incoming().date == request.time;
+        allow delete: if false;
+        allow update: if false; // Sessions are immutable
+      }
+    }
+  }
+}
