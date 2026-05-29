@@ -55,10 +55,10 @@ export default function ActiveQuiz() {
     }
 
     if (words.length === 0) {
-      const msg = state?.mode === "favorites" ? "お気に入りに登録された単語がありません。"
-        : state?.mode === "weakness" ? "間違えたことのある単語がありません。素晴らしい！"
-        : state?.mode === "select" ? "選択された単語が見つかりません。"
-        : "単語データがありません。先にPDFをアップロードしてください。";
+      const msg = state?.mode === "favorites" ? "No favorite words registered."
+        : state?.mode === "weakness" ? "No words answered incorrectly yet. Great job!"
+        : state?.mode === "select" ? "Selected words not found."
+        : "No word data. Please upload a PDF first.";
       setError(msg);
       setLoading(false);
       return;
@@ -73,8 +73,8 @@ export default function ActiveQuiz() {
       return {
         id: w.id as string,
         type: "fill_in_blank",
-        questionText: w.exampleTranslation || w.translation,
-        subText: blanked,
+        questionText: blanked,
+        subText: w.exampleTranslation || w.translation,
         correctAnswer: w.word,
         correctCount: w.correctCount,
         incorrectCount: w.incorrectCount,
@@ -82,7 +82,6 @@ export default function ActiveQuiz() {
     });
 
     generated.sort(() => Math.random() - 0.5);
-    // "all" の場合は全問出題、selectモードも全選択単語を出題
     const count = (state?.questionCount === "all" || state?.mode === "select")
       ? generated.length
       : (state?.questionCount || 10);
@@ -122,7 +121,7 @@ export default function ActiveQuiz() {
       await addSession({
         date: new Date(),
         topic: "words",
-        correctAnswers: correctCount + (feedback === "correct" ? 0 : 0),
+        correctAnswers: correctCount,
         totalQuestions: questions.length,
         durationMinutes: 5,
       });
@@ -132,7 +131,7 @@ export default function ActiveQuiz() {
 
   const startListening = () => {
     if (!("SpeechRecognition" in window) && !("webkitSpeechRecognition" in window)) {
-      alert("お使いのブラウザは音声入力に対応していません。(Chrome推奨)");
+      alert("Speech recognition is not supported in your browser. (Chrome recommended)");
       return;
     }
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -151,33 +150,42 @@ export default function ActiveQuiz() {
   if (loading || wordsLoading) return (
     <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
       <Loader2 className="w-12 h-12 animate-spin text-cyan-400" />
-      <p className="font-bold text-cyan-400 tracking-widest animate-pulse">問題を準備中...</p>
+      <p className="font-bold text-cyan-400 tracking-widest animate-pulse">Preparing questions...</p>
     </div>
   );
 
   if (error) return (
     <div className="glass-panel p-6 border-red-500/30 text-center">
       <p className="text-red-400">{error}</p>
-      <button onClick={() => navigate("/quiz")} className="btn-neon mt-6">戻る</button>
+      <button onClick={() => navigate("/quiz")} className="btn-neon mt-6">Back</button>
     </div>
   );
 
   const q = questions[currentIndex];
   if (!q) return null;
 
+  const remaining = feedback !== "pending"
+    ? questions.length - currentIndex - 1
+    : questions.length - currentIndex;
+
   return (
     <div className="flex flex-col gap-6">
       <header className="flex justify-between items-center">
-        <h1 className="text-xl font-bold tracking-tight">問題テスト</h1>
-        <div className="text-sm font-mono text-slate-400">
-          {currentIndex + 1} / {questions.length}
+        <h1 className="text-xl font-bold tracking-tight">Quiz</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-500 tracking-widest">
+            {remaining} left
+          </span>
+          <div className="text-sm font-mono text-slate-400">
+            {currentIndex + 1} / {questions.length}
+          </div>
         </div>
       </header>
 
       <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden">
         <div
           className="h-full bg-cyan-400 transition-all duration-500"
-          style={{ width: `${((currentIndex) / questions.length) * 100}%` }}
+          style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
         />
       </div>
 
@@ -186,11 +194,13 @@ export default function ActiveQuiz() {
         {feedback === "incorrect" && <div className="absolute inset-0 bg-red-500/10 pointer-events-none"><div className="w-full absolute bottom-0 h-1 bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)]"></div></div>}
 
         <span className="text-xs font-bold tracking-widest text-slate-500 mb-6 border border-white/5 px-3 py-1 rounded-full bg-black/40">
-          穴埋め問題
+          Fill in the blank
         </span>
 
-        <h2 className="text-xl font-bold mb-2 leading-relaxed text-slate-200">{q.questionText}</h2>
-        {q.subText && <p className="text-2xl font-light text-cyan-400 mt-4 mb-6 tracking-wide leading-relaxed">{q.subText}</p>}
+        {/* Japanese hint small above */}
+        {q.subText && <p className="text-sm text-slate-400 mb-4">{q.subText}</p>}
+        {/* English blanked sentence as main question */}
+        <h2 className="text-2xl font-light text-cyan-400 mb-6 tracking-wide leading-relaxed">{q.questionText}</h2>
 
         <form onSubmit={handleSubmit} className="w-full max-w-sm relative mt-4">
           <input
@@ -200,7 +210,7 @@ export default function ActiveQuiz() {
               feedback === "correct" && "border-green-400/50 text-green-400",
               feedback === "incorrect" && "border-red-400/50 text-red-400"
             )}
-            placeholder="答えを入力..."
+            placeholder="Type your answer..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             disabled={feedback !== "pending"}
@@ -224,15 +234,15 @@ export default function ActiveQuiz() {
         {feedback !== "pending" && (
           <div className="mt-8 flex flex-col items-center gap-4 w-full max-w-sm animate-in slide-in-from-bottom-4 duration-300">
             {feedback === "correct" ? (
-              <div className="flex items-center gap-2 text-green-400 font-bold"><CheckCircle2 className="w-6 h-6" /> 正解！</div>
+              <div className="flex items-center gap-2 text-green-400 font-bold"><CheckCircle2 className="w-6 h-6" /> Correct!</div>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center gap-2 text-red-400 font-bold"><XCircle className="w-6 h-6" /> 不正解</div>
-                <div className="text-sm text-slate-300">正解: <span className="text-cyan-400 font-bold text-lg ml-2">{q.correctAnswer}</span></div>
+                <div className="flex items-center gap-2 text-red-400 font-bold"><XCircle className="w-6 h-6" /> Incorrect</div>
+                <div className="text-sm text-slate-300">Answer: <span className="text-cyan-400 font-bold text-lg ml-2">{q.correctAnswer}</span></div>
               </div>
             )}
             <button onClick={nextQuestion} className="btn-neon w-full mt-4 flex items-center justify-center gap-2">
-              {currentIndex < questions.length - 1 ? <>次へ <ArrowRight className="w-5 h-5" /></> : "結果を見る"}
+              {currentIndex < questions.length - 1 ? <>Next <ArrowRight className="w-5 h-5" /></> : "See Results"}
             </button>
           </div>
         )}
