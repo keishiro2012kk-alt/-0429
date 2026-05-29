@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Brain, CheckSquare, Square, Search } from "lucide-react";
+import { Brain, CheckSquare, Square, Search, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { useWords } from "../lib/useWords";
 import { cn } from "../lib/utils";
 
@@ -11,34 +11,64 @@ export default function QuizConfig() {
   const [selectedSource, setSelectedSource] = useState<string>("all");
   const [selectedWordIds, setSelectedWordIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   // PDFソース一覧
-  const sources = Array.from(new Set(allWords.map(w => w.source || "手動追加")));
+  const sources = useMemo(() => Array.from(new Set(allWords.map(w => w.source || "手動追加"))), [allWords]);
 
-  // 選択モード時の表示単語
-  const displayWords = useMemo(() => {
-    if (!search.trim()) return allWords;
+  // 単語選択モード: 検索でフィルター後、PDFごとにグループ化
+  const groupedWords = useMemo(() => {
     const q = search.toLowerCase();
-    return allWords.filter(w =>
-      w.word.toLowerCase().includes(q) || w.translation.includes(q)
-    );
+    const filtered = q
+      ? allWords.filter(w => w.word.toLowerCase().includes(q) || w.translation.includes(q))
+      : allWords;
+
+    const map = new Map<string, typeof allWords>();
+    for (const w of filtered) {
+      const src = w.source || "手動追加";
+      if (!map.has(src)) map.set(src, []);
+      map.get(src)!.push(w);
+    }
+    return Array.from(map.entries()).map(([source, words]) => ({ source, words }));
   }, [allWords, search]);
 
   const toggleWord = (id: string) => {
     setSelectedWordIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
 
-  const selectAll = () => {
-    setSelectedWordIds(new Set(displayWords.map(w => w.id as string)));
+  const toggleGroup = (source: string) => {
+    const ids = allWords.filter(w => (w.source || "手動追加") === source).map(w => w.id as string);
+    const allSelected = ids.every(id => selectedWordIds.has(id));
+    setSelectedWordIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) ids.forEach(id => next.delete(id));
+      else ids.forEach(id => next.add(id));
+      return next;
+    });
   };
 
-  const clearAll = () => setSelectedWordIds(new Set());
+  const toggleCollapse = (source: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      next.has(source) ? next.delete(source) : next.add(source);
+      return next;
+    });
+  };
+
+  const isGroupAllSelected = (source: string) => {
+    const ids = allWords.filter(w => (w.source || "手動追加") === source).map(w => w.id as string);
+    return ids.length > 0 && ids.every(id => selectedWordIds.has(id));
+  };
+
+  const isGroupPartialSelected = (source: string) => {
+    const ids = allWords.filter(w => (w.source || "手動追加") === source).map(w => w.id as string);
+    return ids.some(id => selectedWordIds.has(id)) && !isGroupAllSelected(source);
+  };
 
   const startQuiz = () => {
     navigate("/quiz/active", {
@@ -52,7 +82,6 @@ export default function QuizConfig() {
   };
 
   const countOptions: (number | "all")[] = [5, 10, 15, 20, "all"];
-
   const canStart = mode === "select" ? selectedWordIds.size > 0 : true;
 
   return (
@@ -66,56 +95,48 @@ export default function QuizConfig() {
 
         {/* 出題範囲 */}
         <div>
-          <h2 className="text-sm font-bold text-cyan-400 mb-3">出題範囲</h2>
+          <h2 className="text-xs font-bold text-cyan-400 mb-3 tracking-widest uppercase">出題範囲</h2>
           <div className="grid grid-cols-2 gap-3">
-            <button
-              className={cn("py-4 px-4 rounded-xl border transition-all text-xs font-bold tracking-widest uppercase text-center", mode === "words" ? "border-cyan-500 bg-cyan-500/10 text-white shadow-[0_0_15px_rgba(34,211,238,0.2)]" : "border-white/10 text-slate-400 hover:bg-white/5")}
-              onClick={() => setMode("words")}
-            >
-              単語帳から
-            </button>
-            <button
-              className={cn("py-4 px-4 rounded-xl border transition-all text-xs font-bold tracking-widest text-center", mode === "favorites" ? "border-yellow-500 bg-yellow-500/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5")}
-              onClick={() => setMode("favorites")}
-            >
-              お気に入り
-            </button>
-            <button
-              className={cn("py-4 px-4 rounded-xl border transition-all text-xs font-bold tracking-widest text-center", mode === "weakness" ? "border-red-500 bg-red-500/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5")}
-              onClick={() => setMode("weakness")}
-            >
-              弱点克服
-            </button>
-            <button
-              className={cn("py-4 px-4 rounded-xl border transition-all text-xs font-bold tracking-widest text-center", mode === "select" ? "border-purple-500 bg-purple-500/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5")}
-              onClick={() => setMode("select")}
-            >
-              単語を選ぶ
-            </button>
+            {[
+              { key: "words", label: "単語帳から", color: "cyan" },
+              { key: "favorites", label: "お気に入り", color: "yellow" },
+              { key: "weakness", label: "弱点克服", color: "red" },
+              { key: "select", label: "単語を選ぶ", color: "purple" },
+            ].map(({ key, label, color }) => (
+              <button
+                key={key}
+                className={cn(
+                  "py-4 px-4 rounded-xl border transition-all text-xs font-bold tracking-widest text-center",
+                  mode === key
+                    ? `border-${color}-500 bg-${color}-500/10 text-white shadow-[0_0_15px_rgba(var(--tw-shadow-color),0.2)]`
+                    : "border-white/10 text-slate-400 hover:bg-white/5",
+                  mode === key && color === "cyan" && "border-cyan-500 bg-cyan-500/10",
+                  mode === key && color === "yellow" && "border-yellow-500 bg-yellow-500/10",
+                  mode === key && color === "red" && "border-red-500 bg-red-500/10",
+                  mode === key && color === "purple" && "border-purple-500 bg-purple-500/10",
+                )}
+                onClick={() => setMode(key as any)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* 単語選択モード */}
         {mode === "select" && (
           <div className="flex flex-col gap-3">
+            {/* ヘッダー */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">
-                {selectedWordIds.size}件選択中 / 全{allWords.length}件
+              <span className="text-xs text-slate-400">
+                <span className="text-white font-bold">{selectedWordIds.size}</span> 件選択中 / 全 {allWords.length} 件
               </span>
-              <div className="flex gap-2">
-                <button
-                  className="text-xs px-3 py-1 rounded-lg border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 transition"
-                  onClick={selectAll}
-                >
-                  全選択
-                </button>
-                <button
-                  className="text-xs px-3 py-1 rounded-lg border border-white/10 text-slate-400 hover:bg-white/5 transition"
-                  onClick={clearAll}
-                >
-                  クリア
-                </button>
-              </div>
+              <button
+                className="text-xs px-3 py-1 rounded-lg border border-white/10 text-slate-400 hover:bg-white/5 transition"
+                onClick={() => setSelectedWordIds(new Set())}
+              >
+                クリア
+              </button>
             </div>
 
             {/* 検索 */}
@@ -123,42 +144,83 @@ export default function QuizConfig() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
               <input
                 type="text"
-                className="input-glass pl-9 text-sm"
+                className="input-glass pl-9 text-sm py-2.5"
                 placeholder="単語・訳語で絞り込み..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
 
-            {/* 単語リスト */}
-            <div className="flex flex-col gap-1 max-h-64 overflow-y-auto pr-1">
-              {displayWords.length === 0 && (
+            {/* PDFごとのグループ */}
+            <div className="flex flex-col gap-2 max-h-80 overflow-y-auto pr-1">
+              {groupedWords.length === 0 && (
                 <p className="text-center text-slate-500 text-sm py-4">単語が見つかりません</p>
               )}
-              {displayWords.map(w => {
-                const id = w.id as string;
-                const checked = selectedWordIds.has(id);
+              {groupedWords.map(({ source, words }) => {
+                const allSel = isGroupAllSelected(source);
+                const partial = isGroupPartialSelected(source);
+                const collapsed = collapsedGroups.has(source);
                 return (
-                  <button
-                    key={id}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all text-left",
-                      checked
-                        ? "border-purple-500/50 bg-purple-500/10"
-                        : "border-white/5 hover:bg-white/5"
+                  <div key={source} className="rounded-xl border border-white/10 overflow-hidden">
+                    {/* グループヘッダー */}
+                    <div className={cn(
+                      "flex items-center gap-2 px-3 py-2.5 cursor-pointer transition",
+                      allSel ? "bg-purple-500/15" : partial ? "bg-purple-500/8" : "bg-white/5 hover:bg-white/8"
+                    )}>
+                      {/* グループ一括チェック */}
+                      <button
+                        className="flex-shrink-0"
+                        onClick={() => toggleGroup(source)}
+                      >
+                        {allSel
+                          ? <CheckSquare className="w-4 h-4 text-purple-400" />
+                          : partial
+                            ? <div className="w-4 h-4 rounded border-2 border-purple-400 bg-purple-400/30" />
+                            : <Square className="w-4 h-4 text-slate-600" />
+                        }
+                      </button>
+                      {/* ファイルアイコン＋名前 */}
+                      <button
+                        className="flex items-center gap-2 flex-1 text-left min-w-0"
+                        onClick={() => toggleCollapse(source)}
+                      >
+                        <FileText className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                        <span className="text-xs font-bold text-slate-200 truncate">{source}</span>
+                        <span className="text-[10px] text-slate-500 flex-shrink-0">{words.length}件</span>
+                        {collapsed
+                          ? <ChevronDown className="w-3.5 h-3.5 text-slate-500 ml-auto flex-shrink-0" />
+                          : <ChevronUp className="w-3.5 h-3.5 text-slate-500 ml-auto flex-shrink-0" />
+                        }
+                      </button>
+                    </div>
+
+                    {/* 単語リスト */}
+                    {!collapsed && (
+                      <div className="flex flex-col divide-y divide-white/5">
+                        {words.map(w => {
+                          const id = w.id as string;
+                          const checked = selectedWordIds.has(id);
+                          return (
+                            <button
+                              key={id}
+                              className={cn(
+                                "flex items-center gap-3 px-4 py-2.5 transition text-left",
+                                checked ? "bg-purple-500/10" : "hover:bg-white/5"
+                              )}
+                              onClick={() => toggleWord(id)}
+                            >
+                              {checked
+                                ? <CheckSquare className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                                : <Square className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                              }
+                              <span className="font-bold text-sm text-white">{w.word}</span>
+                              <span className="text-slate-400 text-xs truncate">{w.translation}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     )}
-                    onClick={() => toggleWord(id)}
-                  >
-                    {checked
-                      ? <CheckSquare className="w-4 h-4 text-purple-400 flex-shrink-0" />
-                      : <Square className="w-4 h-4 text-slate-600 flex-shrink-0" />
-                    }
-                    <span className="font-bold text-sm text-white">{w.word}</span>
-                    <span className="text-slate-400 text-xs ml-1 truncate">{w.translation}</span>
-                    {w.source && (
-                      <span className="ml-auto text-[10px] text-slate-600 flex-shrink-0">{w.source}</span>
-                    )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -168,21 +230,22 @@ export default function QuizConfig() {
         {/* PDFソース選択（単語帳モードのみ） */}
         {mode === "words" && sources.length > 1 && (
           <div>
-            <h2 className="text-sm font-bold text-cyan-400 mb-3">PDFを選ぶ</h2>
+            <h2 className="text-xs font-bold text-cyan-400 mb-3 tracking-widest uppercase">PDFを選ぶ</h2>
             <div className="flex flex-col gap-2">
               <button
-                className={cn("py-3 px-4 rounded-xl border transition-all text-xs font-bold text-left", selectedSource === "all" ? "border-cyan-500 bg-cyan-500/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5")}
+                className={cn("py-3 px-4 rounded-xl border transition-all text-xs font-bold text-left flex justify-between", selectedSource === "all" ? "border-cyan-500 bg-cyan-500/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5")}
                 onClick={() => setSelectedSource("all")}
               >
-                すべて ({allWords.length}件)
+                <span>すべて</span><span className="text-slate-500">{allWords.length}件</span>
               </button>
               {sources.map(src => (
                 <button
                   key={src}
-                  className={cn("py-3 px-4 rounded-xl border transition-all text-xs font-bold text-left", selectedSource === src ? "border-cyan-500 bg-cyan-500/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5")}
+                  className={cn("py-3 px-4 rounded-xl border transition-all text-xs font-bold text-left flex justify-between", selectedSource === src ? "border-cyan-500 bg-cyan-500/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5")}
                   onClick={() => setSelectedSource(src)}
                 >
-                  {src} ({allWords.filter(w => (w.source || "手動追加") === src).length}件)
+                  <span className="truncate flex-1 mr-2">{src}</span>
+                  <span className="text-slate-500 flex-shrink-0">{allWords.filter(w => (w.source || "手動追加") === src).length}件</span>
                 </button>
               ))}
             </div>
@@ -192,20 +255,18 @@ export default function QuizConfig() {
         {/* 問題数（単語選択モード以外） */}
         {mode !== "select" && (
           <div>
-            <h2 className="text-sm font-bold text-cyan-400 mb-3">問題数</h2>
-            <div className="flex gap-2 flex-wrap">
+            <h2 className="text-xs font-bold text-cyan-400 mb-3 tracking-widest uppercase">問題数</h2>
+            <div className="flex gap-2">
               {countOptions.map(n => (
                 <button
                   key={n}
                   className={cn(
-                    "flex-1 min-w-[3rem] py-3 rounded-xl border transition-all text-sm font-bold",
-                    questionCount === n
-                      ? "border-cyan-500 bg-cyan-500/10 text-white"
-                      : "border-white/10 text-slate-400 hover:bg-white/5"
+                    "flex-1 py-3 rounded-xl border transition-all text-sm font-bold",
+                    questionCount === n ? "border-cyan-500 bg-cyan-500/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5"
                   )}
                   onClick={() => setQuestionCount(n)}
                 >
-                  {n === "all" ? "全問" : `${n}問`}
+                  {n === "all" ? "全問" : `${n}`}
                 </button>
               ))}
             </div>
@@ -215,14 +276,11 @@ export default function QuizConfig() {
         <button
           onClick={startQuiz}
           disabled={!canStart}
-          className={cn(
-            "btn-neon w-full flex justify-center items-center gap-2 mt-2",
-            !canStart && "opacity-40 cursor-not-allowed"
-          )}
+          className={cn("btn-neon w-full flex justify-center items-center gap-2 mt-2", !canStart && "opacity-40 cursor-not-allowed")}
         >
           <Brain className="w-5 h-5" />
           {mode === "select"
-            ? `選択した${selectedWordIds.size}件で学習する`
+            ? `選択した ${selectedWordIds.size} 件で学習する`
             : "学習を開始する"}
         </button>
       </div>

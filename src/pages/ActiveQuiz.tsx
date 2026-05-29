@@ -197,10 +197,10 @@ export default function ActiveQuiz() {
           Fill in the blank
         </span>
 
-        {/* Japanese hint small above */}
+        {/* English blanked sentence — main question */}
+        <h2 className="text-xl font-bold text-slate-100 mb-3 leading-relaxed">{q.questionText}</h2>
+        {/* Japanese translation hint below */}
         {q.subText && <p className="text-sm text-slate-400 mb-4">{q.subText}</p>}
-        {/* English blanked sentence as main question */}
-        <h2 className="text-2xl font-light text-cyan-400 mb-6 tracking-wide leading-relaxed">{q.questionText}</h2>
 
         <form onSubmit={handleSubmit} className="w-full max-w-sm relative mt-4">
           <input
@@ -234,11 +234,14 @@ export default function ActiveQuiz() {
         {feedback !== "pending" && (
           <div className="mt-8 flex flex-col items-center gap-4 w-full max-w-sm animate-in slide-in-from-bottom-4 duration-300">
             {feedback === "correct" ? (
-              <div className="flex items-center gap-2 text-green-400 font-bold"><CheckCircle2 className="w-6 h-6" /> Correct!</div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2 text-green-400 font-bold"><CheckCircle2 className="w-6 h-6" /> Correct!</div>
+                <span className="text-cyan-400 font-bold text-2xl mt-1">{q.correctAnswer}</span>
+              </div>
             ) : (
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-1">
                 <div className="flex items-center gap-2 text-red-400 font-bold"><XCircle className="w-6 h-6" /> Incorrect</div>
-                <div className="text-sm text-slate-300">Answer: <span className="text-cyan-400 font-bold text-lg ml-2">{q.correctAnswer}</span></div>
+                <span className="text-cyan-400 font-bold text-2xl mt-1">{q.correctAnswer}</span>
               </div>
             )}
             <button onClick={nextQuestion} className="btn-neon w-full mt-4 flex items-center justify-center gap-2">
