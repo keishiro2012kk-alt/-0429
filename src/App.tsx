@@ -12,6 +12,7 @@ import QuizConfig from "./pages/QuizConfig";
 import ActiveQuiz from "./pages/ActiveQuiz";
 import Stats from "./pages/Stats";
 import ReadingPractice from "./pages/ReadingPractice";
+import GrammarQuiz from "./pages/GrammarQuiz";
 
 function PageTransition({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/tutor" element={<PageTransition><ReadingPractice /></PageTransition>} />
           <Route path="/quiz" element={<PageTransition><QuizConfig /></PageTransition>} />
           <Route path="/quiz/active" element={<PageTransition><ActiveQuiz /></PageTransition>} />
+          <Route path="/grammar" element={<PageTransition><GrammarQuiz /></PageTransition>} />
           <Route path="/stats" element={<PageTransition><Stats /></PageTransition>} />
         </Routes>
         

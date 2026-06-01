@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Home, BookOpen, BrainCircuit, BarChart2, Layers, BookText } from "lucide-react";
+import { Home, BookOpen, BrainCircuit, BarChart2, Layers, BookText, PenLine } from "lucide-react";
 import { cn } from "../lib/utils";
 import { motion } from "motion/react";
 
@@ -9,6 +9,7 @@ const links = [
   { to: "/cards", label: "単語帳", icon: Layers },
   { to: "/reading", label: "読解", icon: BookOpen },
   { to: "/quiz", label: "問題", icon: BrainCircuit },
+  { to: "/grammar", label: "文法", icon: PenLine },
   { to: "/stats", label: "統計", icon: BarChart2 },
 ];
 
