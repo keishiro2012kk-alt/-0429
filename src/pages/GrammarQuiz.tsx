@@ -42,44 +42,14 @@ export default function GrammarQuiz() {
     setError("");
     setGenerating(true);
 
-    const diffLabel = { easy: "中学レベル・基礎", medium: "高校レベル・標準", hard: "大学受験・難関レベル" }[difficulty];
-    const prompt = `あなたは英語文法の問題作成の専門家です。以下の条件で英語文法の4択問題を${questionCount}問作成してください。
-
-文法範囲: ${topics.join("、")}
-難易度: ${diffLabel}
-
-必ずJSON配列のみを返してください。前置き・説明・マークダウン記法は一切不要です。
-
-形式:
-[
-  {
-    "question": "問題文（英文の穴埋めや選択式）",
-    "choices": ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],
-    "answer": 0,
-    "explanation": "解説（なぜその答えが正しいか、文法ポイントを含む日本語で）"
-  }
-]
-
-ルール:
-- questionは英文で、空欄は(   )で表す
-- choicesは4つ、answerは正解のインデックス(0-3)
-- explanationは日本語で50〜100字程度
-- 指定した文法範囲を満遍なく出題`;
-
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/grammar-quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
+        body: JSON.stringify({ topics, count: questionCount, difficulty }),
       });
-      const data = await res.json();
-      const text = data.content?.map((c: any) => c.text || "").join("") || "";
-      const clean = text.replace(/```json|```/g, "").trim();
-      const parsed: GrammarQuestion[] = JSON.parse(clean);
+      if (!res.ok) throw new Error(await res.text());
+      const parsed: GrammarQuestion[] = await res.json();
       setQuestions(parsed);
       setCurrentIndex(0);
       setSelected(null);

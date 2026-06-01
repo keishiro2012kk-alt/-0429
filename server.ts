@@ -278,6 +278,48 @@ Correct their English naturally in the conversation if they make obvious mistake
 });
 
 
+app.post("/api/grammar-quiz", async (req, res) => {
+  const { topics, count = 5, difficulty = "medium" } = req.body;
+  const diffLabel: Record<string, string> = {
+    easy: "中学レベル・基礎",
+    medium: "高校レベル・標準",
+    hard: "大学受験・難関レベル",
+  };
+  const prompt = `あなたは英語文法の問題作成の専門家です。以下の条件で英語文法の4択問題を${count}問作成してください。
+
+文法範囲: ${(topics as string[]).join("、")}
+難易度: ${diffLabel[difficulty] ?? "標準"}
+
+必ずJSON配列のみを返してください。前置き・説明・マークダウン記法は一切不要です。
+
+形式:
+[
+  {
+    "question": "問題文（英文の穴埋めや選択式）",
+    "choices": ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],
+    "answer": 0,
+    "explanation": "解説（なぜその答えが正しいか、文法ポイントを含む日本語で50〜100字程度）"
+  }
+]
+
+ルール:
+- questionは英文で、空欄は(   )で表す
+- choicesは必ず4つ、answerは正解のインデックス(0-3)
+- 指定した文法範囲を満遍なく出題`;
+
+  try {
+    const response = await getAI().models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: { responseMimeType: "application/json" },
+    });
+    const json = JSON.parse(response.text || "[]");
+    res.json(json);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     console.log("Loading Vite middleware...");
